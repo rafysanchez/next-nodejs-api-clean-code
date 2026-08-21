@@ -10,7 +10,7 @@ export type UserDepartment =
   | 'Tecnologia'
   | 'Design'
   | 'Produto'
-  | 'Operações'
+  | 'Operacoes'
   | 'Comercial'
   | 'RH';
 

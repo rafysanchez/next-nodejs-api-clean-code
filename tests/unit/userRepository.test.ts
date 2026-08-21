@@ -1,10 +1,14 @@
-import { describe, it, expect, beforeEach } from 'vitest';
-import { userRepository } from '../../server/db/inMemoryStore.ts';
+import { describe, it, expect, beforeAll, beforeEach } from 'vitest';
+import { initializeDatabase } from '../../server/db/postgres.ts';
+import { userRepository } from '../../server/db/userRepository.ts';
 import { CreateUserDTO } from '../../server/types/user.ts';
 
-describe('InMemoryUserRepository (Backend Data Layer)', () => {
+describe('PostgresUserRepository (Backend Data Layer)', () => {
+  beforeAll(async () => {
+    await initializeDatabase();
+  });
+
   beforeEach(async () => {
-    // Reset seed before each test run to ensure isolation
     await userRepository.reset();
   });
 
@@ -17,7 +21,6 @@ describe('InMemoryUserRepository (Backend Data Layer)', () => {
   it('should filter users by search query in name, email or role', async () => {
     const result = await userRepository.findAll({ search: 'Ana' });
     expect(result.data.length).toBeGreaterThan(0);
-    // Beatriz has role 'Analista', Ana has name 'Ana'
     result.data.forEach((user) => {
       const match =
         user.name.toLowerCase().includes('ana') ||
@@ -27,11 +30,27 @@ describe('InMemoryUserRepository (Backend Data Layer)', () => {
     });
   });
 
-  it('should filter users by department and role', async () => {
+  it('should filter users by department', async () => {
     const result = await userRepository.findAll({ department: 'Tecnologia' });
     result.data.forEach((user) => {
       expect(user.department).toBe('Tecnologia');
     });
+  });
+
+  it('should filter users by status and sort by name', async () => {
+    const result = await userRepository.findAll({
+      status: 'active',
+      sortBy: 'name',
+      sortOrder: 'asc',
+    });
+
+    expect(result.data.length).toBeGreaterThan(0);
+    result.data.forEach((user) => {
+      expect(user.status).toBe('active');
+    });
+
+    const names = result.data.map((user) => user.name);
+    expect(names).toEqual([...names].sort((a, b) => a.localeCompare(b)));
   });
 
   it('should create a new user with generated id and avatarColor', async () => {
@@ -56,6 +75,13 @@ describe('InMemoryUserRepository (Backend Data Layer)', () => {
     expect(found?.email).toBe(newUserDto.email);
   });
 
+  it('should find users by email case-insensitively', async () => {
+    const found = await userRepository.findByEmail('ANA.SILVA@EMPRESA.COM.BR');
+
+    expect(found).not.toBeNull();
+    expect(found?.id).toBe('usr_1');
+  });
+
   it('should update user fields successfully', async () => {
     const initialList = await userRepository.findAll();
     const targetUser = initialList.data[0];
@@ -68,7 +94,7 @@ describe('InMemoryUserRepository (Backend Data Layer)', () => {
     expect(updated).not.toBeNull();
     expect(updated?.name).toBe('Nome Atualizado Pelo Teste');
     expect(updated?.role).toBe('Gerente de Produto');
-    expect(updated?.email).toBe(targetUser.email); // email should stay intact
+    expect(updated?.email).toBe(targetUser.email);
   });
 
   it('should update user status', async () => {
@@ -96,6 +122,12 @@ describe('InMemoryUserRepository (Backend Data Layer)', () => {
 
     const afterList = await userRepository.findAll();
     expect(afterList.total).toBe(countBefore - 1);
+  });
+
+  it('should return null when updating or deleting a missing user', async () => {
+    await expect(userRepository.update('missing-id', { name: 'Nao Existe' })).resolves.toBeNull();
+    await expect(userRepository.updateStatus('missing-id', 'active')).resolves.toBeNull();
+    await expect(userRepository.delete('missing-id')).resolves.toBeNull();
   });
 
   it('should compute valid stats for active, inactive and pending users', async () => {

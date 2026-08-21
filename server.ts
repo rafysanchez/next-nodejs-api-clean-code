@@ -2,10 +2,13 @@ import express from 'express';
 import path from 'path';
 import { createServer as createViteServer } from 'vite';
 import { createExpressApp } from './server/app.ts';
+import { initializeDatabase } from './server/db/postgres.ts';
 
 const PORT = Number(process.env.PORT) || 3000;
 
 async function bootstrap() {
+  await initializeDatabase();
+
   const app = createExpressApp();
 
   if (process.env.NODE_ENV !== 'production') {

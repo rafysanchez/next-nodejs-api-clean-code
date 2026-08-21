@@ -1,0 +1,22 @@
+services:
+  api:
+    image: your-registry/next-nodejs-api-clean-code-api:latest
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      POSTGRES_HOST: your-rds-endpoint.amazonaws.com
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: usersdb
+      POSTGRES_USER: app_user
+      POSTGRES_PASSWORD: change-me
+    ports:
+      - "3001:3000"
+
+  web:
+    image: your-registry/next-nodejs-api-clean-code-web:latest
+    environment:
+      API_UPSTREAM: http://api:3000
+    depends_on:
+      - api
+    ports:
+      - "3000:80"

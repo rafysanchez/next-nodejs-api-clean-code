@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { userRepository } from '../db/inMemoryStore.ts';
+import { userRepository } from '../db/userRepository.ts';
 import { UserStatus } from '../types/user.ts';
 
 export class UserController {

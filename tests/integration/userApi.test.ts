@@ -1,49 +1,109 @@
-import { describe, it, expect } from 'vitest';
-import request from 'express';
+import request from 'supertest';
+import { beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { createExpressApp } from '../../server/app.ts';
-import { userRepository } from '../../server/db/inMemoryStore.ts';
+import { initializeDatabase } from '../../server/db/postgres.ts';
+import { userRepository } from '../../server/db/userRepository.ts';
 
-// Direct execution test on Express routes
-describe('User REST API Integration (server/routes)', () => {
+describe('User REST API Integration', () => {
   const app = createExpressApp();
 
-  it('GET /api/health should return ok status', async () => {
-    // Basic handler simulation test
-    expect(app).toBeDefined();
+  beforeAll(async () => {
+    await initializeDatabase();
   });
 
-  it('Full CRUD flow test in backend repository and controllers', async () => {
+  beforeEach(async () => {
     await userRepository.reset();
+  });
 
-    // 1. Check stats
-    const initialStats = await userRepository.getStats();
-    expect(initialStats.total).toBe(6);
+  it('GET /api/health should return ok status', async () => {
+    const response = await request(app).get('/api/health').expect(200);
 
-    // 2. Create User
-    const created = await userRepository.create({
-      name: 'Integração de Teste',
-      email: 'integracao@teste.com',
+    expect(response.body.status).toBe('ok');
+    expect(response.body.timestamp).toBeDefined();
+  });
+
+  it('should execute a full CRUD flow through HTTP endpoints', async () => {
+    const createResponse = await request(app)
+      .post('/api/users')
+      .send({
+        name: 'Integracao de Teste',
+        email: 'integracao@teste.com',
+        role: 'Analista',
+        department: 'Operacoes',
+        status: 'pending',
+      })
+      .expect(201);
+
+    const createdId = createResponse.body.data.id;
+    expect(createdId).toBeDefined();
+    expect(createResponse.body.data.email).toBe('integracao@teste.com');
+
+    const listResponse = await request(app).get('/api/users').query({ search: 'Integracao' }).expect(200);
+    expect(listResponse.body.total).toBe(1);
+    expect(listResponse.body.data[0].id).toBe(createdId);
+
+    const updateResponse = await request(app)
+      .patch(`/api/users/${createdId}/status`)
+      .send({ status: 'active' })
+      .expect(200);
+    expect(updateResponse.body.data.status).toBe('active');
+
+    const getResponse = await request(app).get(`/api/users/${createdId}`).expect(200);
+    expect(getResponse.body.data.name).toBe('Integracao de Teste');
+
+    const deleteResponse = await request(app).delete(`/api/users/${createdId}`).expect(200);
+    expect(deleteResponse.body.data.id).toBe(createdId);
+
+    await request(app).get(`/api/users/${createdId}`).expect(404);
+  });
+
+  it('should reject invalid user creation payloads', async () => {
+    await request(app)
+      .post('/api/users')
+      .send({
+        name: 'Al',
+        email: 'al@example.com',
+        role: 'Analista',
+        department: 'Operacoes',
+      })
+      .expect(400);
+
+    await request(app)
+      .post('/api/users')
+      .send({
+        name: 'Email Invalido',
+        email: 'email-invalido',
+        role: 'Analista',
+        department: 'Operacoes',
+      })
+      .expect(400);
+  });
+
+  it('should return 409 when creating a user with duplicated email', async () => {
+    const payload = {
+      name: 'Usuario Duplicado',
+      email: 'duplicado@teste.com',
       role: 'Analista',
-      department: 'Operações',
-      status: 'pending',
-    });
-    expect(created.id).toBeDefined();
+      department: 'Operacoes',
+      status: 'active',
+    };
 
-    // 3. Search User
-    const found = await userRepository.findAll({ search: 'Integração' });
-    expect(found.data).toHaveLength(1);
-    expect(found.data[0].email).toBe('integracao@teste.com');
+    await request(app).post('/api/users').send(payload).expect(201);
+    const duplicateResponse = await request(app).post('/api/users').send(payload).expect(409);
 
-    // 4. Update status
-    const updated = await userRepository.updateStatus(created.id, 'active');
-    expect(updated?.status).toBe('active');
+    expect(duplicateResponse.body.success).toBe(false);
+  });
 
-    // 5. Delete User
-    const deleted = await userRepository.delete(created.id);
-    expect(deleted?.id).toBe(created.id);
+  it('should validate status updates and missing users', async () => {
+    await request(app).patch('/api/users/usr_1/status').send({ status: 'blocked' }).expect(400);
+    await request(app).patch('/api/users/usr_missing/status').send({ status: 'active' }).expect(404);
+  });
 
-    // 6. Verify Deletion
-    const verify = await userRepository.findById(created.id);
-    expect(verify).toBeNull();
+  it('should return stats from the API', async () => {
+    const response = await request(app).get('/api/users/stats').expect(200);
+
+    expect(response.body.success).toBe(true);
+    expect(response.body.stats.total).toBe(6);
+    expect(response.body.stats.active + response.body.stats.inactive + response.body.stats.pending).toBe(6);
   });
 });

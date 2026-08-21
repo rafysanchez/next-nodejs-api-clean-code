@@ -28,8 +28,13 @@ CMD ["npm", "run", "start:api"]
 
 FROM nginx:1.27-alpine AS web
 
-COPY nginx.conf /etc/nginx/conf.d/default.conf
+RUN apk add --no-cache gettext
+ENV API_UPSTREAM=http://api:3000
+COPY nginx.conf.template /etc/nginx/templates/default.conf.template
+COPY docker/nginx-entrypoint.sh /docker-entrypoint.sh
 COPY --from=builder /app/dist/index.html /usr/share/nginx/html/index.html
 COPY --from=builder /app/dist/assets /usr/share/nginx/html/assets
 
 EXPOSE 80
+
+CMD ["/docker-entrypoint.sh"]

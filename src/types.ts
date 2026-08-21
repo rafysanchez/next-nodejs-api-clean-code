@@ -10,7 +10,7 @@ export type UserDepartment =
   | 'Tecnologia'
   | 'Design'
   | 'Produto'
-  | 'Operações'
+  | 'Operacoes'
   | 'Comercial'
   | 'RH';
 
@@ -71,7 +71,7 @@ export const DEPARTMENTS_LIST: UserDepartment[] = [
   'Tecnologia',
   'Design',
   'Produto',
-  'Operações',
+  'Operacoes',
   'Comercial',
   'RH',
 ];
