@@ -1,0 +1,6 @@
+{
+  "name": "CRUD de Usuários",
+  "description": "Sistema completo de gerenciamento e CRUD de usuários com backend Node.js, dados em memória e React Context.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
