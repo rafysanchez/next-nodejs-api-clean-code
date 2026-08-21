@@ -3,7 +3,7 @@ import path from 'path';
 import { createServer as createViteServer } from 'vite';
 import { createExpressApp } from './server/app.ts';
 
-const PORT = 3000;
+const PORT = Number(process.env.PORT) || 3000;
 
 async function bootstrap() {
   const app = createExpressApp();

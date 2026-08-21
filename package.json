@@ -5,8 +5,12 @@
   "type": "module",
   "scripts": {
     "dev": "tsx server.ts",
-    "build": "vite build && esbuild server.ts --bundle --platform=node --format=cjs --packages=external --sourcemap --outfile=dist/server.cjs",
+    "build": "npm run build:client && npm run build:api && npm run build:server",
+    "build:client": "vite build",
+    "build:api": "esbuild api.ts --bundle --platform=node --format=cjs --packages=external --sourcemap --outfile=dist/api.cjs",
+    "build:server": "esbuild server.ts --bundle --platform=node --format=cjs --packages=external --sourcemap --outfile=dist/server.cjs",
     "start": "node dist/server.cjs",
+    "start:api": "node dist/api.cjs",
     "clean": "rm -rf dist server.js",
     "test": "vitest run",
     "test:watch": "vitest",
